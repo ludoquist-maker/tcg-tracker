@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TCG Release Tracker — The Ludoquist</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #141417;
+    --surface2: #1c1c21;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #f0ede8;
+    --muted: #7a7880;
+    --subtle: #3a383f;
+    --accent-lorcana: #c084fc;
+    --accent-riftbound: #f97316;
+    --accent-mtg: #e11d48;
+    --accent-pokemon: #facc15;
+    --accent-onepiece: #3b82f6;
+    --accent-starwars: #22d3ee;
+    --accent-other: #a3e635;
+    --green: #4ade80;
+    --amber: #fb923c;
+    --red: #f87171;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; }
+
+  /* HEADER */
+  header {
+    padding: 2.5rem 2rem 2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .header-left h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+  .header-left h1 span { color: var(--muted); font-weight: 400; }
+  .header-left p { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--muted); margin-top: 0.5rem; letter-spacing: 0.04em; }
+  .last-updated { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted); text-align: right; }
+  .last-updated strong { color: var(--text); display: block; font-size: 0.8rem; }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-bottom: 1px solid var(--border);
+  }
+  .stat {
+    padding: 1.25rem 1.5rem;
+    border-right: 1px solid var(--border);
+  }
+  .stat:last-child { border-right: none; }
+  .stat-num { font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+  .stat-label { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--muted); margin-top: 0.3rem; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  /* TOOLBAR */
+  .toolbar {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .search-wrap { position: relative; flex: 1; min-width: 180px; max-width: 300px; }
+  .search-wrap input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    padding: 0.5rem 0.75rem 0.5rem 2rem;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-wrap input:focus { border-color: rgba(255,255,255,0.25); }
+  .search-wrap::before { content: '⌕'; position: absolute; left: 0.6rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 1rem; pointer-events: none; }
+  .filters { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .filter-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+  .filter-btn:hover { background: var(--surface2); color: var(--text); }
+  .filter-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* SHEET URL INPUT */
+  .sheet-bar {
+    padding: 0.75rem 1.5rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .sheet-bar label { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em; }
+  .sheet-bar input {
+    flex: 1;
+    min-width: 240px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 6px;
+    outline: none;
+  }
+  .btn-load {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.45rem 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-load:hover { background: var(--text); color: var(--bg); }
+  .sheet-status { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted); }
+
+  /* EVENTS */
+  .events-wrap { padding: 1.5rem; }
+  .section-head {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-head + .section-head { margin-top: 2rem; }
+
+  .event-row {
+    display: grid;
+    grid-template-columns: 64px 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    margin-bottom: 0.5rem;
+    transition: border-color 0.15s, background 0.15s;
+    cursor: default;
+  }
+  .event-row:hover { border-color: var(--border2); background: var(--surface2); }
+  .event-row.urgent { border-color: rgba(248,113,113,0.35); }
+
+  .date-col { text-align: center; }
+  .date-day { font-size: 1.6rem; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
+  .date-mon { font-family: 'DM Mono', monospace; font-size: 0.62rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .date-yr { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--subtle); }
+
+  .info-col {}
+  .event-title { font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.35rem; }
+  .tags { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
+  .tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.55rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+    border: 1px solid;
+  }
+  .tag-type-release { color: var(--green); border-color: rgba(74,222,128,0.3); background: rgba(74,222,128,0.07); }
+  .tag-type-preorder { color: var(--amber); border-color: rgba(251,146,60,0.3); background: rgba(251,146,60,0.07); }
+  .tag-urgent-flag { color: var(--red); border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.07); }
+  .event-note { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--muted); margin-top: 0.4rem; line-height: 1.5; }
+
+  .right-col { text-align: right; }
+  .countdown { font-family: 'DM Mono', monospace; font-size: 0.75rem; font-weight: 500; }
+  .countdown.hot { color: var(--red); }
+  .countdown.soon { color: var(--amber); }
+  .countdown.ok { color: var(--muted); }
+  .countdown.past { color: var(--subtle); }
+
+  .game-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 0.3rem;
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+
+  /* LEGEND */
+  .legend {
+    display: flex;
+    gap: 1.25rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--muted); }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 2;
+  }
+
+  @media (max-width: 600px) {
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+    .event-row { grid-template-columns: 52px 1fr; }
+    .right-col { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>TCG DATES <span>/ The Ludoquist</span></h1>
+    <p id="header-sub">RELEASE DATES · PRE-ORDER DEADLINES · ALLOCATIONS</p>
+  </div>
+  <div class="last-updated">
+    <strong id="last-updated-val">—</strong>
+    LAST UPDATED
+  </div>
+</header>
+
+<div class="stats-bar">
+  <div class="stat"><div class="stat-num" id="s-total">0</div><div class="stat-label">Events tracked</div></div>
+  <div class="stat"><div class="stat-num" id="s-releases">0</div><div class="stat-label">Upcoming releases</div></div>
+  <div class="stat"><div class="stat-num" id="s-preorders">0</div><div class="stat-label">Pre-order deadlines</div></div>
+  <div class="stat"><div class="stat-num" id="s-urgent" style="color:var(--red)">0</div><div class="stat-label">Due this week</div></div>
+</div>
+
+<div class="sheet-bar" id="sheet-bar">
+  <label>Live data</label>
+  <button class="btn-load" id="refresh-btn" onclick="loadSheet()">Refresh ↻</button>
+  <span class="sheet-status" id="sheet-status">Loading…</span>
+</div>
+
+<div class="toolbar">
+  <div class="search-wrap"><input type="text" id="search" placeholder="Search events…" oninput="render()"></div>
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn" onclick="setFilter('release',this)">Releases</button>
+    <button class="filter-btn" onclick="setFilter('preorder',this)">Pre-orders</button>
+    <button class="filter-btn" onclick="setFilter('week',this)">This week</button>
+    <button class="filter-btn" onclick="setFilter('month',this)">30 days</button>
+  </div>
+</div>
+
+<div class="events-wrap" id="events-wrap"></div>
+
+<div class="legend">
+  <div class="legend-item"><span class="game-dot" style="background:var(--accent-lorcana)"></span>Lorcana</div>
+  <div class="legend-item"><span class="game-dot" style="background:var(--accent-riftbound)"></span>Riftbound</div>
+  <div class="legend-item"><span class="game-dot" style="background:var(--accent-mtg)"></span>Magic: The Gathering</div>
+  <div class="legend-item"><span class="game-dot" style="background:var(--accent-pokemon)"></span>Pokémon</div>
+  <div class="legend-item"><span class="game-dot" style="background:var(--accent-onepiece)"></span>One Piece</div>
+  <div class="legend-item"><span class="game-dot" style="background:var(--accent-starwars)"></span>Star Wars: Unlimited</div>
+</div>
+
+<script>
+const NOW = new Date();
+const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const GAME_COLORS = {
+  'Lorcana': 'var(--accent-lorcana)',
+  'Magic: The Gathering': 'var(--accent-mtg)',
+  'Riftbound': 'var(--accent-riftbound)',
+  'Pokémon': 'var(--accent-pokemon)',
+  'One Piece': 'var(--accent-onepiece)',
+  'Star Wars: Unlimited': 'var(--accent-starwars)',
+};
+
+// Demo seed data — replaced when sheet loads
+let allEvents = [
+  { title: 'Lorcana: Wilds Unknown — Allocation deadline', game: 'Lorcana', type: 'preorder', date: '2026-04-16', note: 'Final cut-off for Boosters, Troves & Pre-Release Kits · Leon @ LJK Sales' },
+  { title: 'Riftbound: Vendetta — Booster Display order deadline', game: 'Riftbound', type: 'preorder', date: '2026-05-08', note: 'Deadline for Booster Display (24), Showdown Decks, Vault Bundle · Asmodee UK' },
+  { title: 'Lorcana: Wilds Unknown Set 12 — OP Store release', game: 'Lorcana', type: 'release', date: '2026-05-08', note: 'Organised Play stores only · Leon @ LJK Sales' },
+  { title: 'Lorcana: Wilds Unknown Set 12 — Mass Market release', game: 'Lorcana', type: 'release', date: '2026-05-15', note: 'General retail street date · Leon @ LJK Sales' },
+  { title: 'Riftbound: Vendetta — Pre-Rift event registration deadline', game: 'Riftbound', type: 'preorder', date: '2026-06-06', note: 'Deadline to select distributor & lock for Vendetta · Asmodee UK' },
+  { title: 'Riftbound: Vendetta — Allocation confirmed', game: 'Riftbound', type: 'preorder', date: '2026-06-10', note: 'UVS Games emails final Pre-Rift kit allocations after this date' },
+  { title: 'Riftbound: Vendetta — Pre-Rift event window', game: 'Riftbound', type: 'release', date: '2026-07-24', note: 'Sealed event window 24–30 July · Pre-Rift Event Kit release · Asmodee UK' },
+  { title: 'Riftbound: Vendetta — Est. product release', game: 'Riftbound', type: 'release', date: '2026-07-31', note: 'Booster Display, Showdown Decks & Vault Bundle · Subject to change · Asmodee UK' },
+  { title: 'MTG: Secrets of Strixhaven — Pre-release events', game: 'Magic: The Gathering', type: 'release', date: '2026-04-17', note: 'Pre-release event window begins · Asmodee UK Retailer Bulletin 13-04-2026' },
+];
+
+let activeFilter = 'all';
+
+function days(dateStr) {
+  return Math.ceil((new Date(dateStr) - NOW) / 86400000);
+}
+
+function cdLabel(dateStr) {
+  const n = days(dateStr);
+  if (n < 0) return `${Math.abs(n)}d ago`;
+  if (n === 0) return 'TODAY';
+  if (n === 1) return 'TOMORROW';
+  if (n <= 7) return `${n} DAYS`;
+  return `${n}d`;
+}
+
+function cdClass(dateStr) {
+  const n = days(dateStr);
+  if (n < 0) return 'past';
+  if (n <= 3) return 'hot';
+  if (n <= 14) return 'soon';
+  return 'ok';
+}
+
+function gameColor(game) {
+  return GAME_COLORS[game] || 'var(--accent-other)';
+}
+
+function setFilter(f, el) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function render() {
+  const q = (document.getElementById('search').value || '').toLowerCase();
+  let evs = allEvents.filter(e => {
+    if (q && !e.title.toLowerCase().includes(q) && !e.game.toLowerCase().includes(q) && !(e.note||'').toLowerCase().includes(q)) return false;
+    if (activeFilter === 'release') return e.type === 'release';
+    if (activeFilter === 'preorder') return e.type === 'preorder';
+    if (activeFilter === 'week') return days(e.date) >= 0 && days(e.date) <= 7;
+    if (activeFilter === 'month') return days(e.date) >= 0 && days(e.date) <= 30;
+    return true;
+  });
+  evs.sort((a,b) => new Date(a.date) - new Date(b.date));
+
+  const upcoming = evs.filter(e => days(e.date) >= 0);
+  const past = evs.filter(e => days(e.date) < 0);
+
+  // Stats from full dataset
+  document.getElementById('s-total').textContent = allEvents.length;
+  document.getElementById('s-releases').textContent = allEvents.filter(e=>e.type==='release'&&days(e.date)>=0).length;
+  document.getElementById('s-preorders').textContent = allEvents.filter(e=>e.type==='preorder'&&days(e.date)>=0).length;
+  document.getElementById('s-urgent').textContent = allEvents.filter(e=>days(e.date)>=0&&days(e.date)<=7).length;
+
+  const wrap = document.getElementById('events-wrap');
+  if (!evs.length) {
+    wrap.innerHTML = '<div class="empty-state">NO EVENTS MATCH THIS FILTER.<br>TRY ADJUSTING YOUR SEARCH OR CONNECTING YOUR GOOGLE SHEET.</div>';
+    return;
+  }
+
+  let html = '';
+  if (upcoming.length) {
+    html += `<div class="section-head">UPCOMING — ${upcoming.length} EVENT${upcoming.length!==1?'S':''}</div>`;
+    html += upcoming.map(eventRow).join('');
+  }
+  if (past.length) {
+    html += `<div class="section-head" style="margin-top:2rem">PAST — ${past.length} EVENT${past.length!==1?'S':''}</div>`;
+    html += past.map(eventRow).join('');
+  }
+  wrap.innerHTML = html;
+}
+
+function eventRow(e) {
+  const d = new Date(e.date);
+  const n = days(e.date);
+  const urgent = n >= 0 && n <= 7;
+  const typeTag = e.type === 'release'
+    ? '<span class="tag tag-type-release">Release</span>'
+    : '<span class="tag tag-type-preorder">Pre-order</span>';
+  const urgTag = urgent ? '<span class="tag tag-urgent-flag">Urgent</span>' : '';
+  const color = gameColor(e.game);
+  return `<div class="event-row${urgent?' urgent':''}">
+    <div class="date-col">
+      <div class="date-day" style="color:${color}">${d.getDate()}</div>
+      <div class="date-mon">${MONTHS[d.getMonth()]}</div>
+      <div class="date-yr">${d.getFullYear()}</div>
+    </div>
+    <div class="info-col">
+      <div class="event-title">${e.title}</div>
+      <div class="tags">
+        <span class="game-dot" style="background:${color}"></span>
+        <span style="font-family:'DM Mono',monospace;font-size:0.65rem;color:${color};letter-spacing:0.04em">${e.game}</span>
+        ${typeTag}${urgTag}
+      </div>
+      ${e.note ? `<div class="event-note">${e.note}</div>` : ''}
+    </div>
+    <div class="right-col">
+      <div class="countdown ${cdClass(e.date)}">${cdLabel(e.date)}</div>
+    </div>
+  </div>`;
+}
+
+// ── Data loading ────────────────────────────────────────────────────────────────
+// data.csv lives in the same GitHub Pages repo as this file — no CORS issues.
+// Zapier commits a fresh data.csv to the repo whenever the Google Sheet updates.
+const DATA_URL = 'data.csv';
+
+// Expects columns: title, game, type, date (YYYY-MM-DD), note
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  return lines.slice(1).map(line => {
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else { cur += ch; }
+    }
+    cols.push(cur.trim());
+    return { title: cols[0]||'', game: cols[1]||'Other', type: (cols[2]||'release').toLowerCase(), date: cols[3]||'', note: cols[4]||'' };
+  }).filter(e => e.title && e.date);
+}
+
+async function loadSheet() {
+  const statusEl = document.getElementById('sheet-status');
+  const btn = document.getElementById('refresh-btn');
+  statusEl.textContent = 'Loading…';
+  btn.disabled = true;
+  try {
+    // Cache-bust so GitHub Pages doesn’t serve a stale version
+    const res = await fetch(DATA_URL + '?v=' + Date.now());
+    if (!res.ok) throw new Error(`HTTP ${res.status} — make sure data.csv exists in your repo`);
+    const text = await res.text();
+    const parsed = parseCSV(text);
+    if (!parsed.length) throw new Error('data.csv appears empty — check it has data rows below the header');
+    allEvents = parsed;
+    const now = new Date();
+    document.getElementById('last-updated-val').textContent = now.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
+    statusEl.textContent = `✓ ${parsed.length} events loaded`;
+    render();
+  } catch(err) {
+    statusEl.textContent = `✗ ${err.message}`;
+  }
+  btn.disabled = false;
+}
+
+// Auto-load on page open
+window.addEventListener('DOMContentLoaded', () => {
+  render(); // show demo data immediately while fetching
+  loadSheet();
+});
+</script>
+</body>
+</html>
