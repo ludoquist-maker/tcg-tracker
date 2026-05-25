@@ -111,6 +111,15 @@ body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--te
 .ci span { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--light); transition: color 0.15s; }
 .ci input:checked + span { color: var(--text); }
 
+.tlist { list-style: none; padding: 0; margin: 0.4rem 0 0; }
+.tlist-item { padding: 0.35rem 0; border-top: 1px solid rgba(0,0,0,0.055); display: flex; flex-direction: column; gap: 0.15rem; }
+.tile.s1 .tlist-item { border-top-color: var(--tile-red-b); }
+.tile.s2 .tlist-item { border-top-color: var(--tile-amber-b); }
+.tile.s3 .tlist-item { border-top-color: var(--tile-green-b); }
+.tlist-item:first-child { border-top: none; padding-top: 0; }
+.tlist-title { font-size: 0.85rem; font-weight: 700; color: var(--text); line-height: 1.3; }
+.tlist-note { font-size: 0.7rem; color: var(--muted); line-height: 1.4; }
+.tcount { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.15rem 0.5rem; border-radius: 20px; background: rgba(0,0,0,0.06); color: var(--muted); margin-left: 0.3rem; }
 .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
 
 @media(max-width:600px) {
@@ -163,7 +172,11 @@ let events = [];
 let checks = {};
 let filt = 'all';
 
+// Key for individual event (used for raw dedup in CSV)
 function ekey(e) { return e.date + '||' + e.title; }
+// Key for a group tile: same game + same date + same type = one tile
+function gkey(e) { return e.date + '||' + e.game + '||' + e.type; }
+
 function loadCk() { try { return JSON.parse(localStorage.getItem('tcg_ck') || '{}'); } catch { return {}; } }
 function saveCk() { localStorage.setItem('tcg_ck', JSON.stringify(checks)); }
 
@@ -180,6 +193,19 @@ function parseCSV(txt) {
     c.push(cur.trim());
     return { title: c[0]||'', game: c[1]||'Other', type: (c[2]||'release').toLowerCase(), date: c[3]||'', note: c[4]||'' };
   }).filter(e => e.title && e.date);
+}
+
+// Group events by date + game + type into combined tiles
+function groupEvents(evs) {
+  const map = new Map();
+  evs.forEach(e => {
+    const k = gkey(e);
+    if (!map.has(k)) {
+      map.set(k, { date: e.date, game: e.game, type: e.type, items: [] });
+    }
+    map.get(k).items.push({ title: e.title, note: e.note });
+  });
+  return Array.from(map.values());
 }
 
 async function loadData() {
@@ -210,6 +236,13 @@ function ticks(k) { const c=checks[k]||{}; return (c.o?1:0)+(c.c?1:0)+(c.a?1:0);
 function scls(k) { const n=ticks(k); return n===0?'':n===1?'s1':n===2?'s2':'s3'; }
 function gcls(g) { const m={'Lorcana':'g-lorcana','Magic: The Gathering':'g-mtg','Riftbound':'g-riftbound','Pokémon':'g-pokemon','One Piece':'g-onepiece','Star Wars: Unlimited':'g-starwars'}; return m[g]||'g-other'; }
 
+// handleCk reads key and field from data attributes to avoid inline quote issues
+function handleCk(el) {
+  var k = el.getAttribute('data-key');
+  var f = el.getAttribute('data-field');
+  onck(k, f, el.checked);
+}
+
 function onck(k, f, v) {
   if (!checks[k]) checks[k] = {o:false,c:false,a:false};
   checks[k][f] = v; saveCk();
@@ -229,7 +262,7 @@ function filtered() {
   const q = (document.getElementById('sq').value||'').toLowerCase();
   return events.filter(e => {
     if (q && !e.title.toLowerCase().includes(q) && !e.game.toLowerCase().includes(q)) return false;
-    const n = du(e.date), k = ekey(e);
+    const n = du(e.date), k = gkey(e);
     if (filt==='release')  return e.type==='release';
     if (filt==='preorder') return e.type==='preorder';
     if (filt==='week')     return n>=0&&n<=7;
@@ -240,43 +273,71 @@ function filtered() {
 }
 
 function stats() {
-  document.getElementById('s0').textContent = events.length;
-  document.getElementById('s1').textContent = events.filter(e=>du(e.date)>=0).length;
-  document.getElementById('s2').textContent = events.filter(e=>{const n=du(e.date);return n>=0&&n<=7;}).length;
-  document.getElementById('s3').textContent = events.filter(e=>ticks(ekey(e))===3).length;
+  // Stats based on groups, not raw events
+  const allGroups = groupEvents(events);
+  const upGroups  = allGroups.filter(g=>du(g.date)>=0);
+  document.getElementById('s0').textContent = allGroups.length;
+  document.getElementById('s1').textContent = upGroups.length;
+  document.getElementById('s2').textContent = upGroups.filter(g=>{const n=du(g.date);return n<=7;}).length;
+  document.getElementById('s3').textContent = allGroups.filter(g=>ticks(gkey(g))===3).length;
 }
 
-function tile(e) {
-  const k = ekey(e), d = new Date(e.date), c = checks[k]||{};
+function tile(g) {
+  // g = { date, game, type, items: [{title, note}, ...] }
+  const k = gkey(g);
   const ks = k.replace(/"/g,'&quot;');
-  return `<div class="tile ${scls(k)}" data-key="${ks}">
-  <div class="th">
-    <div class="tdate"><div class="tday">${d.getDate()}</div><div class="tmon">${MONTHS[d.getMonth()]}</div><div class="tyr">${d.getFullYear()}</div></div>
-    <div class="th-mid"><span class="gtag ${gcls(e.game)}">${e.game}</span></div>
-    <div class="cd ${cdcls(e.date)}">${cdlbl(e.date)}</div>
-  </div>
-  <div class="tb">
-    <div class="ttitle">${e.title}</div>
-    <div class="ttags"><span class="ttag-${e.type}">${e.type==='release'?'Release':'Pre-order'}</span></div>
-    ${e.note?`<div class="tnote">${e.note}</div>`:''}
-  </div>
-  <div class="tchecks">
-    <label class="ci"><input type="checkbox" ${c.o?'checked':''} onchange="onck('${ks}','o',this.checked)"><span>Ordered</span></label>
-    <label class="ci"><input type="checkbox" ${c.c?'checked':''} onchange="onck('${ks}','c',this.checked)"><span>Created</span></label>
-    <label class="ci"><input type="checkbox" ${c.a?'checked':''} onchange="onck('${ks}','a',this.checked)"><span>Advertised</span></label>
-  </div>
-</div>`;
+  const d = new Date(g.date);
+  const c = checks[k]||{};
+
+  // Build product list — single item shows as plain text, multiple as a bullet list
+  let productHTML = '';
+  if (g.items.length === 1) {
+    productHTML = '<div class="ttitle">' + g.items[0].title + '</div>';
+    if (g.items[0].note) productHTML += '<div class="tnote">' + g.items[0].note + '</div>';
+  } else {
+    productHTML = '<ul class="tlist">';
+    g.items.forEach(function(item) {
+      productHTML += '<li class="tlist-item"><span class="tlist-title">' + item.title + '</span>';
+      if (item.note) productHTML += '<span class="tlist-note">' + item.note + '</span>';
+      productHTML += '</li>';
+    });
+    productHTML += '</ul>';
+  }
+
+  const typeTag = '<span class="ttag-' + g.type + '">' + (g.type==='release'?'Release':'Pre-order') + '</span>';
+  const countTag = g.items.length > 1 ? '<span class="tcount">' + g.items.length + ' products</span>' : '';
+
+  // Build checkboxes using dataset to avoid any quote escaping issues
+  const parts = [];
+  parts.push('<div class="tile ' + scls(k) + '" data-key="' + ks + '">');
+  parts.push('<div class="th">');
+  parts.push('<div class="tdate"><div class="tday">' + d.getDate() + '</div><div class="tmon">' + MONTHS[d.getMonth()] + '</div><div class="tyr">' + d.getFullYear() + '</div></div>');
+  parts.push('<div class="th-mid"><span class="gtag ' + gcls(g.game) + '">' + g.game + '</span></div>');
+  parts.push('<div class="cd ' + cdcls(g.date) + '">' + cdlbl(g.date) + '</div>');
+  parts.push('</div>');
+  parts.push('<div class="tb">');
+  parts.push('<div class="ttags">' + typeTag + countTag + '</div>');
+  parts.push(productHTML);
+  parts.push('</div>');
+  parts.push('<div class="tchecks">');
+  parts.push('<label class="ci"><input type="checkbox" ' + (c.o ? 'checked' : '') + ' data-key="' + ks + '" data-field="o" onchange="handleCk(this)"><span>Ordered</span></label>');
+  parts.push('<label class="ci"><input type="checkbox" ' + (c.c ? 'checked' : '') + ' data-key="' + ks + '" data-field="c" onchange="handleCk(this)"><span>Created</span></label>');
+  parts.push('<label class="ci"><input type="checkbox" ' + (c.a ? 'checked' : '') + ' data-key="' + ks + '" data-field="a" onchange="handleCk(this)"><span>Advertised</span></label>');
+  parts.push('</div></div>');
+  return parts.join('');
 }
 
 function render() {
   stats();
   const evs = filtered().sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const up = evs.filter(e=>du(e.date)>=0), past = evs.filter(e=>du(e.date)<0);
+  const groups = groupEvents(evs).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const up   = groups.filter(g=>du(g.date)>=0);
+  const past = groups.filter(g=>du(g.date)<0);
   const main = document.getElementById('main');
-  if (!evs.length) { main.innerHTML='<div class="empty">No events match this filter.</div>'; return; }
+  if (!groups.length) { main.innerHTML='<div class="empty">No events match this filter.</div>'; return; }
   let h = '';
-  if (up.length)   h += `<div class="sec-head">Upcoming — ${up.length}</div><div class="grid">${up.map(tile).join('')}</div>`;
-  if (past.length) h += `<div class="sec-head">Past — ${past.length}</div><div class="grid">${past.map(tile).join('')}</div>`;
+  if (up.length)   h += '<div class="sec-head">Upcoming — ' + up.length + ' tile' + (up.length!==1?'s':'') + '</div><div class="grid">' + up.map(tile).join('') + '</div>';
+  if (past.length) h += '<div class="sec-head">Past — ' + past.length + ' tile' + (past.length!==1?'s':'') + '</div><div class="grid">' + past.map(tile).join('') + '</div>';
   main.innerHTML = h;
 }
 
